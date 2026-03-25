@@ -53,26 +53,38 @@ struct ContentView: View {
     }
     //MARK: - Trip List
     private var tripList: some View{
-        List(viewModel.trips){ trip in
-            VStack(alignment: .leading, spacing: 6){
-                HStack{
-                    Text(trip.name)
-                        .font(.headline)
-                    Spacer()
-                    Text(trip.tripType.rawValue)
-                        .font(.caption)
-                        .padding(.horizontal,8)
-                        .padding(.vertical,4)
-                        .background(Color.blue.opacity(0.1))
-                        .cornerRadius(8)
+       
+        List{
+            ForEach(viewModel.trips.indices, id: \.self){ index in
+                NavigationLink(destination: PackingListView (viewModel: viewModel, tripIndex: index))
+                {
+                    VStack(alignment: .leading, spacing: 6){
+                        HStack{
+                            Text(viewModel.trips[index].name)
+                                .font(.headline)
+                            Spacer()
+                            Text(viewModel.trips[index].tripType.rawValue)
+                                .font(.caption)
+                                .padding(.horizontal,8)
+                                .padding(.vertical,4)
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(8)
+                        }
+                        Text("📍 \(viewModel.trips[index].destination)")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        //Packing progress bar
+                        let progress = viewModel.packingProgress(for: viewModel.trips[index])
+                        ProgressView(value: progress)
+                            .tint(.blue)
+                        Text("\(Int(progress * 100))% packed")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 4)
                 }
-                Text("📍 \(trip.destination)")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                Text("🗓 \(trip.startDate.formatted(date: .abbreviated, time: .omitted)) → \(trip.endDate.formatted(date: .abbreviated, time: .omitted))").font(.caption)
-                    .foregroundColor(.secondary)
             }
-            .padding(.vertical,4)
         }
     }
 }
