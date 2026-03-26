@@ -7,7 +7,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var viewModel = TripViewModel()
+    @StateObject private var viewModel = TripViewModel(context: PersistenceController.shared.context)
     @State private var showCreateTrip = false
 
     var body: some View {
@@ -84,6 +84,9 @@ struct ContentView: View {
                     }
                     .padding(.vertical, 4)
                 }
+            }
+            .onDelete{ offsets in
+                viewModel.deleteTrip(at: offsets)
             }
         }
     }

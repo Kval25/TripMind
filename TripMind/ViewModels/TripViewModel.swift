@@ -8,17 +8,110 @@
 import Foundation
 import Combine
 import SwiftUI
+import CoreData
 
 class TripViewModel: ObservableObject {
-    
+
     @Published var trips: [Trip] = []
     @Published var newTrip = Trip()
     @Published var showError = false
     @Published var errorMessage = ""
     @Published var newItemName: String = ""
     
+    private var context: NSManagedObjectContext
+    
+    init(context: NSManagedObjectContext){
+        self.context = context
+        fetchTrips()
+    }
+    
+    
     var tripDuration: Int {
         Calendar.current.dateComponents([.day], from: newTrip.startDate, to: newTrip.endDate).day ?? 0
+    }
+    
+    //MARK: - Fetch all trips from CoreData
+    func fetchTrips(){
+        let request = NSFetchRequest<TripEntity>(entityName: "TripEntity")
+        request.sortDescriptors = [
+            NSSortDescriptor(key: "startDate", ascending: true)
+        ]
+        do{
+            let entities = try context.fetch(request)
+            trips = entities.map{ entity in
+                let itemEntities = (entity.packingItems as? Set<PackingItem>) ?? []
+                Trip(
+                    id: entity.id ?? UUID(),
+                    name: entity.name ?? "",
+                    destination: entity.destination ?? "",
+                    startDate: entity.startDate ?? Date(),
+                    endDate: entity.endDate ?? Date(),
+                    tripType: TripType(rawValue: entity.tripType ?? "") ?? .city
+                )
+            }
+        }catch{
+            print("fetch error: \(error)")
+        }
+    }
+    
+    //MARK: - Save trips to coreData
+    
+    func saveTrip() -> Bool {
+        // validate trip name.
+        guard !newTrip.name.trimmingCharacters(in: .whitespaces).isEmpty else{
+            errorMessage = "Please enter the trip name"
+            showError = true
+            return false
+        }
+        // validate destination
+        guard !newTrip.destination.trimmingCharacters(in: .whitespaces).isEmpty else{
+            errorMessage = " Please Enter the destination"
+            showError = true
+            return false
+        }
+        // validate dates
+        guard newTrip.endDate > newTrip.startDate  else{
+            errorMessage = "End Date must be after start date"
+            showError = true
+            return false
+            
+        }
+        
+        // Save to core data
+        let entity = TripEntity(context: context)
+        entity.id = newTrip.id
+        entity.name = newTrip.name
+        entity.destination = newTrip.destination
+        entity.startDate = newTrip.startDate
+        entity.endDate = newTrip.endDate
+        entity.tripType = newTrip.tripType.rawValue
+        
+        PersistenceController.shared.save()
+        fetchTrips()
+        newTrip = Trip()
+        return true
+        
+        
+        
+    }
+    //MARK: - Delete trip from CoreData
+    func deleteTrip(at offsets: IndexSet){
+        let request = NSFetchRequest<TripEntity>(entityName: "TripEntity")
+        do{
+            let entities = try context.fetch(request)
+            for index in offsets {
+                let tripToDelete = trips[index]
+                if let entity = entities.first(where: { $0.id == tripToDelete.id}){
+                    context.delete(entity)
+                }
+            }
+            PersistenceController.shared.save()
+            fetchTrips()
+        }
+        catch{
+            print("Delete error: \(error)")
+        }
+        
     }
     
     // Called when user changes trip type
@@ -54,30 +147,6 @@ class TripViewModel: ObservableObject {
         return Double(packed) / Double(trip.packingList.count)
         
     }
-   
-    func saveTrip() -> Bool {
-        // validate trip name.
-        guard !newTrip.name.trimmingCharacters(in: .whitespaces).isEmpty else{
-            errorMessage = "Please enter the trip name"
-            showError = true
-            return false
-        }
-        // validate destination
-        guard !newTrip.destination.trimmingCharacters(in: .whitespaces).isEmpty else{
-            errorMessage = " Please Enter the destination"
-            showError = true
-            return false
-        }
-        // validate dates
-        guard newTrip.endDate > newTrip.startDate  else{
-            errorMessage = "End Date must be after start date"
-            showError = true
-            return false
-            
-        }
-        trips.append(newTrip)
-        newTrip = Trip()
-        return true
-    }
+
     
 }

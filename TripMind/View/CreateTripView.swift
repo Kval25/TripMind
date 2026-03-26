@@ -207,5 +207,5 @@ struct CreateTripView: View {
 
 
 #Preview {
-    CreateTripView(viewModel: TripViewModel())
+    CreateTripView(viewModel: TripViewModel(context: PersistenceController.shared.context))
 }

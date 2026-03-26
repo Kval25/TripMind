@@ -150,16 +150,16 @@ struct PackingListView: View {
 }
 
 
-#Preview {
-    let viewModel = TripViewModel()
-    
-    viewModel.trips = [
-        Trip(
-            name: "Goa Trip",
-            destination: "Goa, India",
-            tripType: .beach
-        )
-    ]
-    
-    return PackingListView(viewModel: viewModel, tripIndex: 0)
-}
+//#Preview {
+//    let viewModel = TripViewModel()
+//    
+//    viewModel.trips = [
+//        Trip(
+//            name: "Goa Trip",
+//            destination: "Goa, India",
+//            tripType: .beach
+//        )
+//    ]
+//    
+//    return PackingListView(viewModel: viewModel, tripIndex: 0)
+//}
