@@ -37,17 +37,6 @@ enum TripType: String, CaseIterable, Identifiable {
             ]
         case .city:
             return[
-                PackingItem(name: "Hiking boots"),
-                PackingItem(name: "Backpack"),
-                PackingItem(name: "First aid kit"),
-                PackingItem(name: "Torch / Headlamp"),
-                PackingItem(name: "Rain jacket"),
-                PackingItem(name: "Energy bars"),
-                PackingItem(name: "Water bottle"),
-                PackingItem(name: "Trekking poles")
-            ]
-        case .trek:
-            return[
                 PackingItem(name: "Camera"),
                 PackingItem(name: "Metro card"),
                 PackingItem(name: "Comfortable shoes"),
@@ -56,6 +45,19 @@ enum TripType: String, CaseIterable, Identifiable {
                 PackingItem(name: "City map / Guide"),
                 PackingItem(name: "Casual clothes"),
                 PackingItem(name: "Earphones")
+        ]
+        case .trek:
+            return[
+                PackingItem(name: "Hiking boots"),
+                PackingItem(name: "Backpack"),
+                PackingItem(name: "First aid kit"),
+                PackingItem(name: "Torch / Headlamp"),
+                PackingItem(name: "Rain jacket"),
+                PackingItem(name: "Energy bars"),
+                PackingItem(name: "Water bottle"),
+                PackingItem(name: "Trekking poles")
+                
+               
             ]
         }
         
@@ -88,7 +90,8 @@ struct Trip: Identifiable{
         destination: String = "",
         startDate: Date = Date(),
         endDate: Date = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date(),
-        tripType: TripType = .city
+        tripType: TripType = .city,
+        packingItems: [PackingItem]? = nil
     ){
         self.id = id
         self.name = name
@@ -96,6 +99,6 @@ struct Trip: Identifiable{
         self.startDate = startDate
         self.endDate = endDate
         self.tripType = tripType
-        self.packingList = tripType.suggestedItems
+        self.packingList = packingItems ?? tripType.suggestedItems
     }
 }

@@ -39,14 +39,28 @@ class TripViewModel: ObservableObject {
         do{
             let entities = try context.fetch(request)
             trips = entities.map{ entity in
-                let itemEntities = (entity.packingItems as? Set<PackingItem>) ?? []
-                Trip(
+                // fetch packing items for each trip
+                let itemEntities = (entity.packingItems as? Set<PackingItemEntity>) ?? []
+                
+                print("🧳 Loaded \(itemEntities.count) items for trip: \(entity.name ?? "")")
+                
+                let packingItems = itemEntities.map { itemEntity in
+                    PackingItem (
+                        id: itemEntity.id ?? UUID(),
+                        name: itemEntity.name ?? "",
+                        isPacked: itemEntity.isPacked
+                    )
+                    
+                }.sorted{$0.name < $1.name}
+                
+               return Trip(
                     id: entity.id ?? UUID(),
                     name: entity.name ?? "",
                     destination: entity.destination ?? "",
                     startDate: entity.startDate ?? Date(),
                     endDate: entity.endDate ?? Date(),
-                    tripType: TripType(rawValue: entity.tripType ?? "") ?? .city
+                    tripType: TripType(rawValue: entity.tripType ?? "") ?? .city,
+                    packingItems:  packingItems.isEmpty ? TripType(rawValue: entity.tripType ?? "")?.suggestedItems ?? [] : packingItems
                 )
             }
         }catch{
@@ -77,14 +91,23 @@ class TripViewModel: ObservableObject {
             
         }
         
-        // Save to core data
-        let entity = TripEntity(context: context)
-        entity.id = newTrip.id
-        entity.name = newTrip.name
-        entity.destination = newTrip.destination
-        entity.startDate = newTrip.startDate
-        entity.endDate = newTrip.endDate
-        entity.tripType = newTrip.tripType.rawValue
+        // Save trip entity
+        let tripEntity = TripEntity(context: context)
+        tripEntity.id = newTrip.id
+        tripEntity.name = newTrip.name
+        tripEntity.destination = newTrip.destination
+        tripEntity.startDate = newTrip.startDate
+        tripEntity.endDate = newTrip.endDate
+        tripEntity.tripType = newTrip.tripType.rawValue
+        
+        // Save packing items
+        for item in newTrip.packingList {
+            let itemEntity = PackingItemEntity(context: context)
+            itemEntity.id = item.id
+            itemEntity.name = item.name
+            itemEntity.isPacked = item.isPacked
+            itemEntity.trip = tripEntity
+        }
         
         PersistenceController.shared.save()
         fetchTrips()
@@ -120,25 +143,82 @@ class TripViewModel: ObservableObject {
         newTrip.packingList = newTrip.tripType.suggestedItems
     }
     
-    //Toggle item packed/unpacked (we click->get index->update status)
+    // MARK: - Toggle item packed/unpacked (we click->get index->update status) and save to Coredata
     func toggleItem(_ item: PackingItem, in trip: inout Trip){
-        if let index = trip.packingList.firstIndex(where: { $0.id == item.id}){
-            trip.packingList[index].isPacked.toggle()
+        
+        guard let tripIndex = trips.firstIndex(where: { $0.id == trip.id}) else {return}
+        // Update in memory
+        if let itemindex =  trips[tripIndex].packingList.firstIndex(where: { $0.id == item.id }){
+            trips[tripIndex].packingList[itemindex].isPacked.toggle()
+            trip = trips[tripIndex]
+            
         }
+        let itemRequest = NSFetchRequest<PackingItemEntity>(entityName: "PackingItemEntity")
+        itemRequest.predicate = NSPredicate(format: "id == %@", item.id as CVarArg)
+        do{
+            let results = try context.fetch(itemRequest)
+            results.first?.isPacked.toggle()
+            PersistenceController.shared.save()
+        }catch{
+            print("Toggle error: \(error)")
+        }
+        
     }
     
-    // Add custom item to packing list
+    
+    //MARK: - Add custom item to packing list and save to CoreData
     func addCustomItem(to trip: inout Trip){
         let trimmed = newItemName.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
-        trip.packingList.append(PackingItem(name: trimmed))
-        newItemName = ""
+        let newItem = PackingItem(name: trimmed)
+        
+        //Update in memory
+        guard  let tripIndex = trips.firstIndex(where: { $0.id == trip.id}) else {return }
+        trips[tripIndex].packingList.append(newItem)
+        trip = trips[tripIndex]
+        
+        // Save to CoreData
+        let tripRequest = NSFetchRequest<TripEntity>(entityName: "TripEntity")
+        tripRequest.predicate = NSPredicate(format: "id == %@", trip.id as CVarArg)
+        do{
+            let tripEntities = try context.fetch(tripRequest)
+            if let tripEntity = tripEntities.first{
+                let itemEntity = PackingItemEntity(context: context)
+                itemEntity.id = newItem.id
+                itemEntity.name = newItem.name
+                itemEntity.isPacked = false
+                itemEntity.trip = tripEntity
+                PersistenceController.shared.save()
+            }
+        }catch{
+            print("Add item error : \(error)")
+        }
+        newItemName  = ""
         }
     
-    // Delete item from packing list
+    //MARK: - Delete packing item
     func deleteItem(at offsets: IndexSet, from trip: inout Trip){
-        trip.packingList.remove(atOffsets: offsets)
+        guard let tripIndex = trips.firstIndex(where: { $0.id == trip.id})else {return}
+        
+        for index in offsets {
+            let itemToDelete = trips[tripIndex].packingList[index]
+            
+            //Delete from CoreData
+            let request = NSFetchRequest<PackingItemEntity>(entityName: "PackingItemEntity")
+            request.predicate = NSPredicate(format: "id == %@", itemToDelete.id as CVarArg)
+            do{
+                let results = try context.fetch(request)
+                results.forEach{ context.delete($0)}
+                PersistenceController.shared.save()
+            }catch{
+                print("Delete item error: \(error)")
+            }
+        }
+        trips[tripIndex].packingList.remove(atOffsets: offsets)
+        trip = trips[tripIndex]
     }
+    
+    
     
     //Progress of packing
     func packingProgress(for trip: Trip) -> Double {
