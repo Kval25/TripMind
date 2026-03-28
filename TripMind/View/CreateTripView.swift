@@ -19,6 +19,7 @@ struct CreateTripView: View {
                         destination
                         dateSection
                         tripTypeSection
+            
                     }.padding(.horizontal)
                 
                     // Save Button

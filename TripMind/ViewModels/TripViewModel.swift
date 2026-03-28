@@ -11,12 +11,14 @@ import SwiftUI
 import CoreData
 
 class TripViewModel: ObservableObject {
+    
 
     @Published var trips: [Trip] = []
     @Published var newTrip = Trip()
     @Published var showError = false
     @Published var errorMessage = ""
     @Published var newItemName: String = ""
+    
     
     private var context: NSManagedObjectContext
     
@@ -227,6 +229,36 @@ class TripViewModel: ObservableObject {
         return Double(packed) / Double(trip.packingList.count)
         
     }
+    
+    //MARK: - Save packing items to CoreData (Used by AI feature)
+    func savePackingItems(for tripIndex: Int){
+        let trip = trips[tripIndex]
+        let tripRequest = NSFetchRequest<TripEntity>(entityName: "TripEntity")
+        tripRequest.predicate = NSPredicate(format: "id == %@", trip.id as CVarArg)
+        do{
+            let tripEntities = try context.fetch(tripRequest)
+            guard let tripEntity = tripEntities.first else { return }
+            
+            // Delete old items
+            if let oldItems = tripEntity.packingItems as? Set<PackingItemEntity>{
+                oldItems.forEach{ context.delete($0)}
+            }
+            // Save new Items
+            for item in trip.packingList {
+                let itemEntity = PackingItemEntity(context: context)
+                itemEntity.id = item.id
+                itemEntity.name = item.name
+                itemEntity.isPacked = item.isPacked
+                itemEntity.trip = tripEntity
+            }
+            PersistenceController.shared.save()
+        }catch {
+            print("Save packing items error: \(error)")
+        }
+    }
+    
+    
+
 
     
 }
