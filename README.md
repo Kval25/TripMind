@@ -1,6 +1,7 @@
 # TripMind ✈️
 
 A smart iOS travel companion app built with SwiftUI that helps you plan trips and never forget what to pack.
+
 ![TripMind Demo](demo.gif)
 
 ## Features
