@@ -259,8 +259,16 @@ struct PackingListView: View {
             let items = try await AIPackingService.shared.suggestPackingItems(for: aiPrompt)
             await MainActor.run {
                 for itemName in items {
-                    let newItem = PackingItem(name: itemName)
-                    viewModel.trips[tripIndex].packingList.append(newItem)
+                    let existingNames = viewModel.trips[tripIndex].packingList
+                        .map { $0.name.lowercased() }
+
+                    for itemName in items {
+                        // Only add if not already in the list
+                        if !existingNames.contains(itemName.lowercased()) {
+                            let newItem = PackingItem(name: itemName)
+                            viewModel.trips[tripIndex].packingList.append(newItem)
+                        }
+                    }
                 }
                 viewModel.savePackingItems(for: tripIndex)
                 isLoadingAI = false

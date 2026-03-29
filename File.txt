@@ -1,0 +1,10 @@
+let existingNames = viewModel.trips[tripIndex].packingList
+    .map { $0.name.lowercased() }
+
+for itemName in items {
+    // Only add if not already in the list
+    if !existingNames.contains(itemName.lowercased()) {
+        let newItem = PackingItem(name: itemName)
+        viewModel.trips[tripIndex].packingList.append(newItem)
+    }
+}
