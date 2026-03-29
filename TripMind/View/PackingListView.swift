@@ -258,7 +258,7 @@ struct PackingListView: View {
         do{
             let items = try await AIPackingService.shared.suggestPackingItems(for: aiPrompt)
             await MainActor.run {
-                for itemName in items {
+                for _ in items {
                     let existingNames = viewModel.trips[tripIndex].packingList
                         .map { $0.name.lowercased() }
 
